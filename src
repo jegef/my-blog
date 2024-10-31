@@ -1,1 +1,1766 @@
+###APP.vue
 
+<template>
+  <transition name="theme-transition">
+  <div id="app" :class="{'active':isDarkTheme}"> 
+    <navigation-bar :message="message" @changeThemeList="changeTheme">
+    </navigation-bar>
+    <transition name="fade">
+      <side-bar id="sidebar" v-if="showSideBar"
+          @mouseout="false"></side-bar>
+    </transition>
+    <transition>
+      <write-page class="write_page" v-if="showSideBar"></write-page>
+    </transition>
+    <date-message class="date" v-if="showDate"></date-message>
+
+    <div class="list">    
+        
+      <router-link to="/student" class="tab" active-class="isactive">🛖Home</router-link>            
+      <router-link to="/person" class="tab" active-class="isactive">🏷️HTML</router-link>
+      <router-link to="/css" class="tab" active-class="isactive">🧩CSS</router-link>
+      <router-link to="/javascript" class="tab" active-class="isactive">📌Javascript</router-link>
+      <router-link to="/canvas" class="tab" active-class="isactive">🔨Canvas</router-link>
+      <router-link to="/jqeury" class="tab" active-class="isactive">🔈jQeury</router-link>
+      <router-link to="/vuelist" class="tab" active-class="isactive">🖱️VUE</router-link>
+      <router-link to="/bootstrap" class="tab" active-class="isactive">🫙Bootstrap</router-link>
+      <router-link to="/elementui" class="tab" active-class="isactive">⌨️Element-UI</router-link>
+      <router-link to="/ajax/jack" class="tab" active-class="isactive">💡AJAX</router-link>
+  </div>
+    <br>
+    <router-view class="tab-show" @change-background="changeBackground"></router-view>
+    
+    <img src="./images/tree.png" alt="" class="img2">
+    <div class="write_mind">
+      <div class="open_mind">《</div>
+      <div class="mind_head">
+        全部评论{{mind_list.length}}条
+      </div>
+      <div class="mind_main">
+        <my-mind v-for="(item,index) in mind_list" :key="index">
+          <template v-slot:persons>
+            {{ item.persons }}
+          </template>
+          <template v-slot:title>
+            {{ item.title }}
+          </template>
+          <template v-slot:content>
+            {{ item.content }}
+          </template>
+          <template v-slot:message>
+            {{ item.message }}
+          </template>
+          <template v-slot:like_msg>
+            <div class="click_like" @click="like(index)">{{item.likes}}{{item.count}}</div>
+          </template>
+        </my-mind>
+      </div>
+      <div class="emoji">
+        <div class="emoji_h">
+          <div class="emoji_tab">😃</div>
+          <div class="emoji_tab">🎈</div>
+          <div class="emoji_tab">🍇</div>
+          <div class="emoji_tab">🌞</div>
+        </div>
+        <div class="emoji_m">
+          <div v-for="(item,index) in emojis_list" :key="index" class="emoji_L">
+            <div v-for="(item1,index1) in item" :key="index1" @click="addEmo(index,index1)">
+              {{ item1 }}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mind_bottom">
+        <textarea name="" id="my_mind" v-model="myMindData"
+          @keydown.enter="send_Mind"></textarea>
+        
+        <div class="send_mind">😃
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</transition>
+</template>
+
+<script>
+import NavigationBar from './components/NavigationBar';
+import SideBar from './components/SideBar';
+import DateMessage from './components/DateMessage'
+import WritePage from './components/WritePage';
+import MyMind from './components/MyMind';
+import $ from 'jquery';
+import {ref,provide} from 'vue'
+import { ElMessage } from 'element-plus';
+import emojis from './data/emoji.js'
+
+  export default{
+    name:'app',
+    components:{
+      NavigationBar,
+      SideBar,
+      DateMessage,
+      WritePage,
+      MyMind,
+       
+    },
+    data(){
+      return{
+        message:'我是导航栏',
+        isDarkTheme:false,
+        bgImage:ref()
+      }
+    },
+    methods:{
+      changeTheme(){
+        this.isDarkTheme=!this.isDarkTheme;
+        console.log('hello')
+        
+      },
+      changeBackground(newImageUrl) {
+        newImageUrl=newImageUrl.replace('../','')
+        this.bgImage = newImageUrl;
+        document.querySelector('#app').style.background=`url(${this.bgImage})`
+        console.log(this.bgImage)
+    },
+    login(){
+      this.showLogin=!this.showLogin
+    }
+    },
+    
+    
+    setup(){
+      const myMindData=ref('');
+      const personsList=['👩','🧓','🧑‍🦰','👨‍🦱','🤴','👲','👳','👮‍♀️','👮‍♂️','🕵️‍♂️','🕵️‍♂️','💂‍♀️','🥷','👷‍♀️','🧑‍🎓','👩‍🏫','👩‍🌾','🧑‍🍳','🧑‍🔧','🧑‍💼','👩‍🔬','👨‍🎤','👩‍🚀','🧑‍🚒','🦸‍♂️','🧙','💁‍♀️','🙇‍♀️','🧖‍♂️','🤹‍♀️'];
+      let my_name=ref('');
+      let my_message=ref();
+      let my_person=ref();
+      let showEmoji=false;
+      var mind_lists=ref();
+      var mind_list=ref([
+        {title:'用户448565',content:"这是第一条评论！",message:'2024.10.20',persons:'👩',count:ref(0),likes:'🩶'}
+      ]);
+      const emojis_list=emojis;
+      const isMindOpen=ref(false);
+      const showSideBar=ref(false);
+      const showDate=ref(false);
+      const writing=ref(false)
+      provide('showSideBar',showSideBar)
+      provide('showDate',showDate)
+      provide('writing',writing)
+
+      //添加表情
+      const addEmo=function(index,index1){
+        myMindData.value+=emojis_list[index][index1]
+        setTimeout(()=>{
+          
+          $('#my_mind').focus();
+        },1000)
+
+      }
+      const send_Mind=function(){
+        console.log(emojis_list)
+        //用户名字随机生成
+        if(myMindData.value){
+          my_name.value='用户'+Math.floor(Math.random()*Math.pow(10,Math.random()*10))
+          my_person.value=personsList[Math.floor(Math.random()*personsList.length)]
+          mind_list.value.push({title:my_name.value,content:myMindData.value,message:new Date().toLocaleString(),persons:my_person.value,count:ref(0),likes:'🩶'})
+          myMindData.value=''
+          $('.emoji').css({
+              height:'0'
+            })
+          showEmoji=false;
+          mind_lists=JSON.stringify(mind_list.value)
+          localStorage.setItem('mind_lists', mind_lists)
+        }else{
+          ElMessage({
+                    message: 'Warning！请先创建并完善文章内容！.',
+                    type: 'warning',
+                })
+        
+      }
+    }
+    
+    function like(index){
+      // alert(index)
+        mind_list.value[index].count++;
+        mind_list.value[index].likes='❤️'
+        // console.log(like_count);
+        // 将点赞数存储到本地存储中
+      localStorage.setItem('mind_lists', JSON.stringify(mind_list.value))
+    }
+      var a_idx = 0;
+      const jQuery=$;
+      jQuery(document).ready(function($) {
+        localStorage.getItem('mind_lists')?mind_list.value=JSON.parse(localStorage.getItem('mind_lists')):console.log('hello')
+        console.log(mind_list.value)
+        $('.emoji').css({
+              height:'0'
+            })
+        $('.send_mind').click(function(){
+          if(showEmoji){
+            showEmoji=false;
+            $('.emoji').css({
+              height:'0'
+            })
+          }else{
+            showEmoji=true;
+            $('.emoji').css({
+              height:'190px'
+            })
+          }
+        })
+        $('.open_mind').click(function(){
+          if(!isMindOpen.value){
+            $('.write_mind').animate({
+              width:'18%'
+            })
+            $('.open_mind').text('   》')
+            isMindOpen.value=!isMindOpen.value
+          }else{
+            $('.write_mind').animate({
+              width:'0%'
+            })
+            $('.open_mind').text('《')
+            isMindOpen.value=!isMindOpen.value
+          }
+          
+        })
+        $("#app").click(function(e) {
+        var a = new Array("❤️黄国佳❤️","ivanlee","✨吃好喝好～✨","🏀CUHK🏀","🍕Regina🍕","REGINA❤️IVANLEE","😍HuangGuoJia😍","🉑东山再起🉑","😶‍🌫️(๑′ᴗ‵๑)😶‍🌫️ 千千Ｉ Lᵒᵛᵉᵧₒᵤ❤");
+              var $i = $("<span></span>").text(a[a_idx]);
+              a_idx = (a_idx + 1) % a.length;
+              var x = e.pageX,
+              y = e.pageY;
+              $i.css({
+                  "z-index": 999999999999999999999999999999999999999999999999999999999999999999999,
+                  "top": y - 20,
+                  "left": x,
+                  "position": "absolute",
+                  "font-weight": "bold",
+                  "color": "rgb("+~~(255*Math.random())+","+~~(255*Math.random())+","+~~(255*Math.random())+")"
+              });
+              $("#app").append($i);
+              $i.animate({
+                  "top": y - 180,
+                  "opacity": 0
+              },
+              1500,
+              function() {
+                  $i.remove();
+              });
+          });
+        });
+      return{showSideBar,showDate,writing,isMindOpen,myMindData,
+        mind_list,send_Mind,my_name,my_message,personsList,my_person,addEmo
+      ,emojis_list,showEmoji,mind_lists,like}
+    }
+  
+  }
+</script>
+<style scoped>
+  .tab {
+    
+    color: #9bc4cb;
+    
+    font-family: 'Courier New', Courier, monospace;
+    margin-left: 30px;
+  text-decoration: none;
+    
+  }
+  .tab:hover{
+    transform: translateX(5px);
+    color:rgb(170, 253, 226);
+    border-bottom:1px solid rgb(182, 241, 222);
+  }
+  .isactive {
+    color:rgb(18, 245, 169);
+    border-bottom:1px solid rgb(45, 246, 132);
+  }
+  .tab-show{
+    animation: show 1s ease;
+    
+  }
+    @keyframes show{
+      0%{
+        opacity: 0;
+        transform: translateY(-80px)
+      }
+      50%{
+        opacity: 0.3;
+        transform: translateY(-50px)
+
+      }
+      100%{
+        opacity: 1;
+        transform: translateY(0)
+
+      }
+    } 
+  #app{
+    background: url('./images/2862884-20230604121820115-1008318392 (1).png');
+    background-size:100% 100%;
+    background-repeat: no-repeat;
+    position:fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    user-select: none;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+  /*主题切换*/
+  .active {
+    filter:brightness(60%);
+    color:rgb(18, 245, 169);
+    
+}
+  /* 隐藏纵向滚动条 */
+ ::-webkit-scrollbar {
+  width: 0;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 0;
+}
+
+/* 隐藏横向滚动条（如果有） */
+::-webkit-scrollbar-horizontal {
+  display: none;
+}
+  .list {
+    width: 80%;
+    margin-left: 9%;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    
+  }
+  .img2 {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    bottom: 20px;
+    right: 20px;
+    animation: show 2s ease;
+    filter:drop-shadow(0 0 10px #0790b6);
+    transition:transform 0.5s ease;
+  }
+  .img2:hover {
+    transform: scale(1.2);
+  }
+  .theme-transition-enter-active, .theme-transition-leave-active {
+    transition: background-color 0.5s ease; /* 设置过渡动画的属性、持续时间和速度曲线 */
+  }
+  .theme-transition-enter, .theme-transition-leave-to {
+    background-color: transparent; /* 设置切换时的背景颜色 */
+  }
+  .date {
+    position:absolute;
+    top:50px;
+    color: #83eef4;
+    right: 10px;
+    width:420px;
+    text-align: center;
+    line-height: 20px;
+    height: 250px;
+  }
+  .fade-enter-active, .fade-leave-active {
+    transition: opacity 1s;
+    transition: transform 2s ease;
+}
+
+.fade-enter, .fade-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+}
+/*文章模块*/
+.write_page {
+  position:absolute;
+  top:0px;
+  right: 0px;
+  
+}
+
+
+</style>
+
+###router
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-undef */
+import {createRouter,createWebHashHistory} from 'vue-router';
+
+import StudentMain1 from '../components/StudentMain1.vue'
+const routes=[
+    {
+        path:'/',
+        redirect:'/student'
+    },
+    {
+        path:'/person',
+        component:()=>import('../components/PersonList')
+    },
+    {
+        path:'/student',
+        component:()=>import('../components/StudentList'),
+        children:[
+            {
+                path:'',
+                redirect:'/student/main'
+            },
+            {
+                path:'main',
+                component:()=>import('../components/StudentMain.vue')
+            },
+            {
+                path:'main1',
+                component:()=>import('../components/StudentMain1.vue')
+            },
+            {
+                path:'main2',
+                component:()=>import('../components/StudentMain2.vue')
+            },
+            {
+                path:'main3',
+                component:()=>import('../components/StudentMain3.vue')
+            },
+            {
+                path:'main4',
+                component:()=>import('../components/StudentMain4.vue')
+            },
+            {
+                path:'main5',
+                component:()=>import('../components/StudentMain5.vue')
+            },
+            {
+                path:'main6',
+                component:()=>import('../components/StudentMain6.vue')
+            }
+        ]
+    },
+    {
+        path:'/css',
+        component:()=>import('../components/AboutList')
+    },
+    {
+        path:'/javascript',
+        component:()=>import('../components/JavascriptList.vue')
+    },
+    {
+        path:'/canvas',
+        component:()=>import('../components/CanvasList.vue')
+    },
+    {
+        path:'/jqeury',
+        component:()=>import('../components/JqeuryList.vue')
+    },
+    {
+        path:'/vuelist',
+        component:()=>import('../components/VueList.vue')
+    },
+    {
+        path:'/bootstrap',
+        component:()=>import('../components/BootStrapList.vue')
+    },
+    {
+        path:'/elementui',
+        component:()=>import('../components/ElementUiList.vue')
+    },
+    {
+        path:'/ajax/:username',
+        component:()=>import('../components/AjaxList.vue')
+    }
+];
+const router=createRouter({
+    routes,
+    history:createWebHashHistory()
+});
+export default router
+
+###writePage.vue
+<template>
+    <div class="writePage">
+      
+       <div class="writePage_main">
+            <div class="writePage_main_head">
+                <button class="writePage_main_head_list" @click="createPage" :disabled="IsCreate">🖍️写</button>
+                <button class="writePage_main_head_list" @click="addElement('input','新input')" :disabled="IsWriting">🔖标题</button>
+                <button class="writePage_main_head_list" @click="addElement('textarea','')" :disabled="IsWriting">🗒️正文</button>
+                <button class="writePage_main_head_list" @click="selectImg" :disabled="IsWriting">
+                  🧩图片
+                  <input type="file" ref="fileInput" style="display: none" @change="handleImageUpload">
+                </button>
+                <button class="writePage_main_head_list" :disabled="IsWriting" @click="addElement('code','代码片段')">🧾代码</button>
+                <button class="writePage_main_head_list" :disabled="IsWriting" @click="addElement('tips','提示')">📝提示</button>
+                <button class="writePage_main_head_list" :disabled="IsWriting" @click="addElement('warming','警告')">🚩警告</button>
+                <button class="writePage_main_head_list" @click="Delete">🍹删除</button>
+                <button class="writePage_main_head_list" @click="publish">⏳发布</button>
+            </div>
+            <div class="writePage_main_list">
+              <div v-for="(element,index) in elements" :key="index">        
+                <img v-if="element.type==='img'" :src="imageURL" :alt="element.alt" class="pageLists">
+                <button v-else-if="element.type==='button'" @click="handleButtonClick(index)">{{element.content}}</button>               
+                <div v-else-if="element.type==='textarea'">
+                    <textarea  class="textarea pageLists"
+                    ref="inputTextarea"
+                    v-model="element.content"               
+                    placeholder="请输入文字..."></textarea>
+                </div>
+                <div v-else-if="element.type==='code'">
+                  <textarea  class="textarea pageLists"
+                  ref="inputTextarea"
+                  v-model="element.content"               
+                  placeholder="请输入代码片段"></textarea>
+                </div>
+                <div v-else-if="element.type==='tips'">
+                  <textarea  class="textarea tips pageLists"
+                  ref="inputTextarea"
+                  v-model="element.content"               
+                  placeholder="请输入提示文本"></textarea>
+                </div>
+                <div v-else-if="element.type==='warming'">
+                  <textarea  class="textarea warm pageLists"
+                  ref="inputTextarea"
+                  v-model="element.content"               
+                  placeholder="请输入警告文本"></textarea>
+              </div>
+                <h3 v-else-if="element.type==='h3'">{{element.content}}</h3>             
+                <input v-else-if="element.type==='input'" type="text" placeholder="请输入" class="h3Lists" v-model="element.content">
+            </div>
+            </div>
+       </div>
+       <div class="writePage_right">
+            <div class="writePage_right_list" v-for="(item,index) in List" :key="index">
+                <div class="writePage_right_list_t">🔖{{item.type}}</div>
+                <div class="writePage_right_list_m">🗒️{{item.content}}</div>
+                <div class="writePage_right_list_b">
+                    <router-link class="writePage_right_list_b_l" :to="item.target" @click="hideWritePage">👁️‍🗨️</router-link>
+                    <div class="writePage_right_list_b_l">⭐</div>
+                    <div class="writePage_right_list_b_l">🖍️</div>
+                    <div class="writePage_right_list_b_l" @click="DeleteCreate(index)">✖️</div>                
+                    <div class="create_time">{{ item.time }}</div>
+                  </div>
+            </div>
+       </div>
+       <div class="createPage" v-if="showCreatePage">
+        <el-form :model="form" label-width="auto" style="max-width: 600px;color: white;margin-left:50px;margin-top:20px;">
+            <el-form-item label="文章标题">
+              <el-input v-model="form.name" />
+            </el-form-item>
+            <el-form-item label="文章分类">
+                <el-select v-model="form.region" placeholder="请选择文章分类">
+                  <el-option label="HTML" value="HTML" />
+                  <el-option label="CSS" value="CSS" />
+                  <el-option label="Javascript" value="Javascript" />
+                  <el-option label="VUE2" value="VUE2" />
+                  <el-option label="VUE3" value="VUE3" />
+                  <el-option label="jQuery" value="jQuery" />
+                  <el-option label="Bootstrap" value="Bootstrap" />
+                  <el-option label="Canvas" value="Canvas" />
+                  <el-option label="AJAX" value="AJAX" />
+                  <el-option label="Element-Plus" value="Element-Plus" />
+                  <el-option label="Echarts" value="Echarts" />
+                </el-select>
+              </el-form-item>
+            <el-form-item label="创作日期">
+              <el-col :span="11">
+                <el-date-picker
+                  v-model="form.date1"
+                  type="date"
+                  placeholder="选填"
+                  style="width: 100%"
+                />
+              </el-col>
+              <el-col :span="2" class="text-center">
+                <span class="text-gray-500">-</span>
+              </el-col>
+              <el-col :span="11">
+                <el-time-picker
+                  v-model="form.date2"
+                  placeholder="选填"
+                  style="width: 100%"
+                />
+              </el-col>
+            </el-form-item>
+            <el-form-item label="是否可见">
+              <el-switch v-model="form.delivery" />
+            </el-form-item>
+            <el-form-item label="文章标签">
+              <el-checkbox-group v-model="form.type">
+                <el-checkbox value="阅读" name="type">
+                  阅读
+                </el-checkbox>
+                <el-checkbox value="技术" name="type">
+                  技术
+                </el-checkbox>
+                <el-checkbox value="解答" name="type">
+                  解答
+                </el-checkbox>
+                <el-checkbox value="项目" name="type">
+                  项目
+                </el-checkbox>
+              </el-checkbox-group>
+            </el-form-item>
+            <el-form-item label="文章类型">
+              <el-radio-group v-model="form.resource">
+                <el-radio value="Sponsor">原创</el-radio>
+                <el-radio value="Venue">转载</el-radio>
+                <el-radio value="translate">翻译</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item label="文章摘要">
+              <el-input v-model="form.desc" type="textarea" />
+            </el-form-item>
+            <el-form-item class="form_item">
+              <el-button type="primary" @click="onSubmit">Create</el-button>
+              <el-button @click="createPage">Cancel</el-button>
+            </el-form-item>
+          </el-form>
+       </div>
+    </div>
+</template>
+<script>
+import {ref,reactive,inject} from 'vue';
+import {useStore} from 'vuex';
+import './WritePage.css';
+import { ElMessage } from 'element-plus';
+import router from '../router/index';
+export default{
+    
+    setup(){
+        const store=useStore();
+        let List=[];
+        let Lists=ref([])
+        const TypeList=[];
+        const showCreatePage=ref(false);
+        const selected=ref(null)
+        const selected_1=ref(null);
+        const count=ref(0);
+        const IsWriting=ref(true)
+        const IsCreate=ref(false)
+        const form = reactive({
+            name: '',
+            region: '',
+            date1: '',
+            date2: '',
+            delivery: false,
+            type: [],
+            resource: '',
+            desc: '',
+            })
+          var inputText='';
+          const elements=ref([]);
+          const fileInput=ref(null)
+          var imageURL=ref('');
+          const images=ref([]);
+          const elementString=ref('')
+          const targetPath=ref('')
+          const showSideBar=inject('showSideBar')
+          localStorage.getItem('List')?List=JSON.parse(localStorage.getItem('List')):List=[];
+
+          // onMounted(function(){
+          // })
+
+            const addElement=(type,content,src=null,alt=null)=>{
+                inputText='';
+                const newElement={type,content};
+                if(type==='img'){
+                    newElement.src=src;
+                    newElement.alt=alt;
+                    imageURL.value=URL.createObjectURL(src)
+
+                }
+                elements.value.push(newElement);
+                // console.log(elements.value)
+            }
+            const handleButtonClick=(index)=>{
+                console.log(`按钮${index+1}被点击了`)
+            };
+        const onSubmit = () => {
+            if(form.name==''||form.region==''||form.resource==''||form.desc==''){
+                ElMessage({
+                    message: 'Warning, 请完善一下信息！.',
+                    type: 'warning',
+                })
+            }else{
+                count.value++;                               
+                
+               
+                IsCreate.value=!IsCreate.value
+                IsWriting.value=!IsWriting.value
+                targetPath.value=pagesRouter(form.region)
+                
+                List.unshift({title:form.name,content:form.desc,type:form.region,time:new Date().toLocaleString(),target:targetPath.value});
+                localStorage.setItem('List',JSON.stringify(List))
+                TypeList.push(form.region)
+                showCreatePage.value=!showCreatePage.value
+                console.log(List)
+                ElMessage({
+                    message: 'Congrats, 创建成功！.',
+                    type: 'success',
+                })
+            }
+            
+        }
+        const createPage=()=>{
+            showCreatePage.value=!showCreatePage.value
+        }
+        const hideWritePage=()=>{
+          return showSideBar.value=!showSideBar.value
+        }
+        const publish=()=>{
+          if(elements.value.length){
+            const box=document.querySelector('.writePage_main_list')
+            elementString.value=box.innerHTML;
+          
+            console.log(elementString)
+            
+            showThisPage(form.region,elements.value)
+            console.log(elements.value)
+            IsCreate.value=!IsCreate.value
+            IsWriting.value=!IsWriting.value
+            elements.value=[]
+            TypeList.value=[]
+            ElMessage({
+                    message: '发布成功！',
+                    type: 'success',
+                })
+            //路由跳转到targetPath.value
+            
+            router.push('/jqeury')
+          }else{
+            ElMessage({
+                    message: 'Warning！请先创建并完善文章内容！.',
+                    type: 'warning',
+                })
+          }
+          
+          
+        }
+        const Delete=()=>{
+          if(elements.value.length){
+            elements.value.pop(elements.value.length-1);
+            ElMessage({
+                    message: '删除成功！.',
+                    type: 'success',
+                })
+          }else{
+            ElMessage({
+                    message: 'Warning！您还没有编辑任何文字.',
+                    type: 'warning',
+                })
+          }      
+        }
+        const DeleteCreate=(index)=>{
+          
+          
+          List.splice(index,1)
+          
+          IsCreate.value=!IsCreate.value
+          IsWriting.value=!IsWriting.value
+          elements.value=[]
+          ElMessage({
+                    message: '删除成功！.',
+                    type: 'success',
+                })
+          localStorage.setItem('List',JSON.stringify(List))
+        }
+        const selectImg=()=>{
+          fileInput.value.click();
+        }
+        const handleImageUpload=(event)=>{
+          const file = event.target.files[0];
+          addElement('img','图片',file)
+          // 处理上传的图片文件，可以将其保存到 store 中或进行其他操作
+          // console.log('Selected image:', file);
+        }
+
+        //发布文章渲染函数/存储文章数据
+        const showThisPage=(type,Data)=>{
+          switch(type){
+            case 'HTML':
+              store.commit('showHtmlPage',Data);
+              store.dispatch('saveHtmlData');
+              break;
+            case 'CSS':
+              store.commit('showCssPage',Data);
+              store.dispatch('saveCssData');
+              break;
+            case 'Javascript':
+              store.commit('showJsPage',Data);
+              store.dispatch('saveJsData');
+              break;
+            case 'VUE2':
+              store.commit('showVue2Page',Data);
+              store.dispatch('saveVue2Data');
+              break;
+            case 'VUE3':
+              store.commit('showVue3Page',Data);
+              store.dispatch('saveVue3Data');
+              break;
+            case 'jQuery':
+              store.commit('showJqueryPage',Data);
+              store.dispatch('saveJqueryData');
+              break;
+            case 'Bootstrap':
+              store.commit('showBootStrapPage',Data);
+              store.dispatch('saveBootStrapData');
+              break;
+            case 'Canvas':
+              store.commit('showCanvasPage',Data);
+              store.dispatch('saveCanvasData');
+              break;
+            case 'AJAX':
+              store.commit('showAjaxPage',Data);
+              store.dispatch('saveAjaxData');
+              break;
+            case 'Element-Plus':
+              store.commit('showElementUIPage',Data);
+              store.dispatch('saveElementUIData');
+              break;
+
+          }
+
+        }
+        
+    const pagesRouter=function(pageType){
+    switch(pageType){
+        case 'HTML':
+            return '/person'
+        case 'CSS':
+            return '/css'
+        case 'Javascript':
+            return '/javascript'
+        case 'Canvas':
+            return '/canvas'
+        case 'VUE3':
+            return '/vuelist'
+        case 'jQuery':
+            return '/jqeury'
+        case 'BootStrap':
+            return '/bootstrap'
+        case 'Element-Plus':
+            return '/elementui'
+        case 'AJAX':
+            return '/ajax/jack'
+        default:
+            return '/student'
+    }
+}
+
+        return{store,List,TypeList,inputText,addElement,
+          handleButtonClick,elements,showCreatePage,createPage,
+          selected,selected_1,form,onSubmit,count,IsCreate,
+          IsWriting,fileInput,imageURL,images,elementString,publish,Delete,DeleteCreate,selectImg,
+          handleImageUpload,showThisPage,targetPath,pagesRouter,hideWritePage,Lists}
+    }
+}
+</script>
+<style scoped>
+    
+    .writePage {
+        display:flex;
+        flex-direction:row;
+        height: 1000px;
+        width: 1350px;
+        z-index:100;
+
+    }
+    .writePage_main {
+        width: 1037px;
+        height: 100%;
+        display:flex;
+        flex-direction:column;
+        background-color: rgb(19, 18, 18);
+
+    }
+    .writePage_right {
+        display:flex;
+        flex-direction: column;
+        width: 310px;
+        height: 100%;
+        margin-left: 2px;
+        background-color: rgb(16, 16, 16);
+        overflow: scroll;
+        
+    }
+    .writePage_right_list {
+        width: 300px;
+        height: auto;
+        margin-left: 5px;
+        margin-top: 10px;
+        border-radius:8px;
+        color: #ffffff;
+
+        background-color: rgba(173, 172, 172, 0.6);
+    }
+    .writePage_right_list_t {
+      font-size:14px;
+      line-height: 22px;
+      padding-left: 4px;
+      margin-top: 4px;
+      color: #90dcf5;
+    }
+    .writePage_right_list_m{
+      padding-left: 4px;
+
+      font-size: 16px;
+      line-height: 25px;
+      margin-top: 5px;
+    }
+    .writePage_right_list_b {
+      width: 90%;
+      margin-top: 5px;
+      display: flex;
+      flex-direction: row;
+      padding-left: 4px;
+      margin-bottom: 4px;
+      justify-content: space-around;
+    }
+    .writePage_right_list_b_l {
+      width: 30px;
+      height: 30px;
+      text-align: center;
+      line-height: 30px;
+      border-radius: 15px;
+    }
+    .writePage_right_list_b_l:hover {
+      background-color: rgba(219, 216, 216, 0.2);
+    }
+    .create_time {
+      font-size: 12px;
+      line-height: 30px;
+      color: #a2f8db;
+    }
+    .writePage_main_head {
+        display:flex;
+        flex-direction:row;
+        justify-content: space-around;
+        width: 100%;
+        height: 6%;
+        border-bottom:1px solid rgb(98, 252, 154);
+    }
+    .writePage_main_list {
+        width: 100%;
+        height: 89%;
+    }
+    .writePage_main_head_list{
+        width: auto;
+        height: 40px;
+        font-size: 14px;
+        margin-top: 10px;
+        border-radius:10px;
+        text-align: center;
+        line-height: 40px;
+        cursor: pointer;
+        background-color: rgba(aquamarine,0.8)
+    }
+    .createPage {
+        position:absolute;
+        width: 700px;
+        height: 500px;
+        top: 200px;
+        left: 160px;
+        background:rgba(250, 249, 249, 0.6);
+        border:1px solid blueviolet;;
+        border-radius:20px;
+      }
+      .tips {
+        border: 1px solid rgb(26, 248, 104);
+      }
+      .warm {
+        border: 1px solid rgb(247, 203, 61);
+      }
+    
+</style>
+
+###store
+import {createStore} from 'vuex';
+const store=createStore({
+    state(){
+        return{
+            counter:0,
+            writeList:[],
+            writeType:[],
+            htmlList:[],
+            cssList:[],
+            javascriptList:[],
+            canvasList:[],
+            jQueryList:[],
+            vue2List:[],
+            vue3List:[],
+            bootStrapList:[],
+            elementUI_List:[],
+            ajaxList:[]
+        }
+    },
+    mutations:{
+        showHtmlPage(state,data){
+            state.htmlList.push(data)
+        },
+        showCssPage(state,data){
+            state.cssList.push(data)
+        },
+        showJsPage(state,data){
+            state.javascriptList.push(data)
+        },
+        showCanvasPage(state,data){
+            state.canvasList.push(data)
+        },
+        showJqueryPage(state,data){
+            state.jQueryList.push(data)
+        },
+        showVue2Page(state,data){
+            state.vue2List.push(data)
+        },
+        showVue3Page(state,data){
+            state.vue3List.push(data)
+        },
+        showBootStrapPage(state,data){
+            state.bootStrapList.push(data)
+        },
+        showElementUIPage(state,data){
+            state.elementUI_List.push(data)
+        },
+        showAjaxPage(state,data){
+            state.ajaxList.push(data)
+        }
+    },
+    actions:{
+        //将数据保存到本地
+        saveHtmlData({state}){
+            localStorage.setItem('htmlList',JSON.stringify(state.htmlList))
+        },
+        saveCssData({state}){
+            localStorage.setItem('cssList',JSON.stringify(state.cssList))
+        },
+        saveJsData({state}){
+            localStorage.setItem('javascriptList',JSON.stringify(state.javascriptList))
+        },
+        saveCanvasData({state}){
+            localStorage.setItem('canvasList',JSON.stringify(state.canvasList))
+        },
+        saveJqueryData({state}){
+            localStorage.setItem('jQueryList',JSON.stringify(state.jQueryList))
+        },
+        saveVue2Data({state}){
+            localStorage.setItem('vue2List',JSON.stringify(state.vue2List))
+        },
+        saveVue3Data({state}){
+            localStorage.setItem('vue3List',JSON.stringify(state.vue3List))
+        },
+        saveBootStrapData({state}){
+            localStorage.setItem('bootStrapList',JSON.stringify(state.bootStrapList))
+        },
+        saveElementUIData({state}){
+            localStorage.setItem('elementUI_List',JSON.stringify(state.elementUI_List))
+        },
+        saveAjaxData({state}){
+            localStorage.setItem('ajaxList',JSON.stringify(state.ajaxList))
+        }
+    }
+})
+export default store
+
+###studentList.vue
+<template>
+    <div class="student">         
+        <router-view class="main-show" @change-background="handleChangeBackground">
+        </router-view>               
+        <div class="MainNav">
+            <div id="underline">
+                <router-link class="tab" to="/student/main" active-class="isactive" exact>首页</router-link>
+            </div>
+            <div id="underline">
+                <router-link class="tab" to="/student/main1" active-class="isactive">数据</router-link>
+            </div>
+            <div id="underline">
+                <router-link class="tab" to="/student/main2" active-class="isactive">源码</router-link>                
+            </div>
+            <div id="underline">
+                <router-link class="tab" to="/student/main3" active-class="isactive">背景</router-link>
+            </div>
+            <div id="underline">
+                <router-link class="tab" to="/student/main4" active-class="isactive">项目</router-link>
+            </div>
+            <div id="underline">
+                <router-link class="tab" to="/student/main6" active-class="isactive">足迹</router-link>
+            </div>
+            <div id="underline">
+                <router-link class="tab" to="/student/main5" active-class="isactive">登录</router-link>
+            </div>
+        </div>
+        
+    </div>
+</template>
+<style scoped> 
+    .student {
+        
+        margin-top: 3px;
+        margin-left: 200px;
+        width: 1250px;
+        height: 810px;
+    }
+    .main-show {
+        height: 750px;
+        overflow: auto;
+        
+        animation: show 2s ease;
+    }
+    .MainNav {
+        position:absolute;
+        display: flex;
+       flex-direction: row;
+       justify-content: space-around;
+        width: 700px;
+        height: 60px;
+        left: 50%;
+        top: 95%;
+        transform: translate(-50%,-50%);
+    }
+        @keyframes show{
+          0%{
+            opacity: 0;
+            transform: translateX(-90px)
+          }
+          50%{
+            opacity: 0.3;
+            transform: translateX(-40px)
+    
+          }
+          100%{
+            opacity: 1;
+            transform: translateX(0)
+    
+          }
+        } 
+    .tab {
+    
+        color: #f9f8fb;       
+      text-decoration: none;
+    font-family: 'Courier New', Courier, monospace;
+        
+      }
+      /*.tab:hover{
+        transform: translateX(5px);
+        color:rgb(170, 253, 226);
+        border-bottom:1px solid rgb(182, 241, 222);
+      }*/
+      .isactive {
+        color:rgb(18, 245, 169);
+        border-bottom:1px solid rgb(45, 246, 132);
+      }
+      #underline{
+        width: 80px;
+          height: 30px;
+          margin: 20px;
+          position: relative;
+          margin-left: 8px;
+          text-align: center;
+          line-height: 30px;
+          float:left;
+          
+      }
+      #underline>router-link{
+          color: lightgrey;
+          text-decoration: none;
+          /* 必须有下面这三行：这可以让此“div”移到父级的中央（而不是中心与中心重合） */
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          cursor: pointer;
+          /* 然后再去位移 —— 上面往哪偏，这里往回移。   （正百分比是往右、下） */
+          transform: translate(-50%,-50%);
+      }
+      #underline:after{
+          content: "";
+          width: 0;
+          height: 2px;
+          background: rgb(1, 227, 69);
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transition: all .5s;
+      }
+      #underline:hover:after{
+          left: 0;
+          width: 100%;
+      }
+
+</style>
+<script>
+
+export default{
+    methods:{
+        handleChangeBackground(imageUrl) {
+            this.$emit('change-background', imageUrl);
+            console.log(this.imageUrl)
+        }
+    }
+}
+</script>
+
+###sideBar.vue
+<template>
+    <div class="sidebar">
+        <di class="sidebar_list">                      
+            <div class="sidebar_list1">
+                <my-message></my-message>
+            </div>
+            <div class="sidebar_list1" >
+                <div class="list_t" @click="showTip">
+                    <span>{{list[0].tip}}</span>
+                    <span>{{list[0].tipMessage}}</span>
+                </div>
+                <div class="list_b" >
+                  <div v-for="(item,index) in sideBarData" :key="index" class="tags_list">{{item}}</div>
+                </div>
+            </div>
+            <div class="sidebar_list1" >
+              <div class="list_t" @click="showTip">
+                  <span>{{list[1].tip}}</span>
+                  <span>{{list[1].tipMessage}}</span>
+              </div>
+              <div class="list_b">
+                <div v-for="(item,index) in articleData" :key="index" class="tags_list">
+                  <div class="article_t">{{item.article}}</div>
+                  <div class="article_c">{{item.count}}</div>
+                </div>
+              </div>
+            </div>
+            <div class="sidebar_list1" >
+            <div class="list_t" @click="showTip">
+                <span>{{list[2].tip}}</span>
+                <span>{{list[2].tipMessage}}</span>
+            </div>
+            <div class="list_b">1</div>
+            </div>
+            <div class="sidebar_list1" >
+          <div class="list_t" @click="showTip">
+              <span>{{list[3].tip}}</span>
+              <span>{{list[3].tipMessage}}</span>
+          </div>
+          <div class="list_b">1</div>
+            </div>
+            <div class="sidebar_list1" >
+              <div class="list_t" @click="showTip">
+                  <span>{{list[4].tip}}</span>
+                  <span>{{list[4].tipMessage}}</span>
+              </div>
+              <div class="list_b">1</div> 
+            </div>
+            <my-search class="mySearch"></my-search>  
+            <div class="sidebar_list_b">
+              <span @click="hide_side_bar">❌</span>
+              <span @click="showWritingPage">🔑</span>
+              <span>🔒</span>
+            </div>             
+      </di>           
+    </div>
+</template>
+<script>
+import MySearch from './MySearch';
+import MyMessage from './MyMessage';
+import side_bar from './side_bar.json';
+import $ from 'jquery';
+import {inject,ref} from 'vue'
+export default{
+    components:{
+        MySearch,
+        MyMessage,
+        
+    },
+    data(){
+        return{
+            activeIndex:null,
+            list:[
+                {tip:'🏷️',tipMessage:'我的标签',isVisible: false},
+                {tip:'📖',tipMessage:'阅读排行',isVisible: false},
+                {tip:'❤️',tipMessage:'推荐排行',isVisible: false},
+                {tip:'✉️',tipMessage:'最新评论',isVisible: false},
+                {tip:'🗃️',tipMessage:'随笔档案',isVisible: false},
+                
+            ]
+        }
+    },
+   setup(){
+      const sideBarData=ref(side_bar.tags);
+      const articleData=ref(side_bar.readCounts);
+      const showTip=()=>{
+        $(document).ready(function() {
+            $('.list_t').click(function() {
+                var list_b = $(this).next('.list_b');
+                $('.list_b').not(list_b).slideUp('slow'); // 收起其他内容
+                list_b.slideDown('slow');
+              });
+            $('.list_t').dblclick(function(){
+              // var index=$(this).index();
+              var list_b = $(this).next('.list_b');
+              
+              list_b.slideUp('slow');
+              // $('.list_b').eq(index).css({
+              //   display:'none'
+              // })
+            })
+        });
+      }
+      const showSideBar=inject('showSideBar')
+      const hide_side_bar=()=>{
+          return showSideBar.value=!showSideBar.value,writing.value=false;
+      }
+      const writing=inject('writing');
+      const showWritingPage=()=>{
+        return writing.value=!writing.value
+      }
+      return{showTip,hide_side_bar,showSideBar,writing,showWritingPage,sideBarData,articleData}
+   }
+}
+</script>
+<style scoped>
+:root {
+  --tags_h:45px;
+}
+.sidebar {
+    position:absolute;
+    left:-3px;
+    top: 0;
+    width: 310px;
+    height: 1000px;
+    overflow: scroll;
+    z-index: 100;
+    animation: show_s 1s ease;
+    background-color: rgb(16, 16, 16);
+
+}
+  
+  .sidebar_list {
+    position:relative;
+    width: 100%;
+    height: 100%;
+    margin-left: 2px;
+    color: #fbf8f8;
+    display: flex;
+    padding-left: 5px;
+    background:rgba(0,0,0,0.6);
+
+    flex-direction: column;
+    
+
+  }
+  .sidebar_list1 {
+    width: 300px;   
+    margin-top: 5px;
+    
+  }
+  .list_t {
+    display: flex;
+    flex-direction: row;
+    height: 40px;
+    border-bottom: 1px solid beige;
+    
+  }
+  .list_t:hover {
+    color: #7fe2f6;
+    background: rgba(174, 166, 166, 0.5);
+  }
+  .list_t span{
+    margin-top: 2.5px;
+    margin-left: 10px;
+  }
+  .list_t span:nth-child(1){
+    font-size: 24px;
+    padding-top: 5px;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    line-height: 20px;
+    border-radius:10px;
+    background:rgba(174, 166, 166, 0.3);
+    
+  }
+  .list_t span:nth-child(2){
+    margin-left: 20px;
+    
+    line-height:40px;
+  }
+  .list_b {
+    height: auto;
+   display: none;
+   z-index: 10;
+  }
+  .tags_list {
+    position: relative;
+    display:flex;
+    width: 80%;
+    margin-left: 15%;
+    height: var(--tags_h);
+    flex-direction: row;
+    line-height: var(--tags_h);
+    border-bottom: 1px solid beige;
+    transition:transform 0.5s ease;
+  }
+  .article_t {
+    position: relative;
+    width: 80%;
+    white-space: nowrap; /* 防止文字换行 */
+    overflow: hidden; /* 隐藏超出盒子的部分 */
+    text-overflow: ellipsis; /* 使用省略号代替超出部分 */
+  }
+  .article_c {
+    width: 20%;
+  }
+  .tags_list:hover{
+    color: #a4fa7f;
+    border-bottom:1px solid #a4fa7f;
+    transform: translateX(-10px);
+  }
+  .sidebar_list_b {
+    position: fixed;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    align-content: center;
+    width: 290px;
+    height: 50px;
+    bottom: 10px;
+    left: 10px;
+    
+  }
+  .sidebar_list_b span {
+    width: 50px;
+    height: 50px;
+    font-size:24px;
+    border-radius:10px;
+    text-align: center;
+    line-height: 50px;
+    background:rgba(174, 166, 166, 0.3)
+  }
+  .sidebar_list_b span:hover{
+    background:rgba(141, 235, 240, 0.3)
+  }
+  .mySearch {
+    position:absolute;
+    bottom: 120px;
+  }
+</style>
+
+###myMind.vue
+
+<template>
+    <div class="mind_component">
+        <div class="userImg">
+            <slot name="persons"></slot>
+        </div>
+        <div class="userMind_m">
+            <div class="mindTitle">
+                <slot name="title"></slot>
+            </div>
+            <div class="mindContent">
+                <slot name="content"></slot>
+            </div>
+            <div class="mind_msg">
+                <slot name="message"></slot>
+                <slot name="like_msg"></slot>
+            </div>
+        </div>
+    </div>
+</template>
+<script setup>
+
+</script>
+<style>
+.mind_component{
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    width: 290px;
+    height: auto;
+    min-height: 60px;
+    margin-left: 5px;
+    margin-top: 20px;
+}
+.userImg{
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 10px;
+    font-size: 30px;
+}
+.userMind_m {
+    width: 240px;
+    height: auto;;
+    display: flex;
+    flex-direction: column;
+}
+.mindTitle {
+    height: 20px;
+    font-size: 12px;
+    color: #dfdddd;
+}
+.mindContent{
+    height: auto;
+    font-size: 16px;
+    line-height: 25px;
+    color: #ffffff;
+}
+.mind_msg {
+    font-size: 12px;
+    color: #dfdddd;
+    position: relative;
+    height: 20px;
+    display: flex;
+    line-height: 20px;
+    flex-direction: row;
+}
+.click_like {
+    position: absolute;
+    right:20px;
+    font-size: 16px;
+}
+.click_like:hover {
+    font-size: 18px;
+}
+</style>
+
+###login.vue
+<template>
+    <div id="login">
+        <!-- 用户登录界面 -->
+		<div class="login">
+			<h2>用户登录</h2>
+			<div class="login_box">
+				<input type="text" id='name' maxlength='20'/>
+				<label for="name">账号</label>
+			</div>
+			<div class="login_box">
+				<input type="password" id='pwd' maxlength='20'>
+				<label for="pwd">密码</label>
+			</div>
+			<a class="login-a">登录<span></span><span></span><span></span><span></span></a>
+			<a class="enroll-a">注册<span></span><span></span><span></span><span></span></a>
+		</div>
+		<!-- 用户注册界面 -->
+		<div class="login enroll" v-show="false">
+			<h2>用户注册</h2>
+			<div class="login_box">
+				<input type="text" id="name1" maxlength='20'/>
+				<label for="name">注册账号</label>
+			</div>
+			<div class="login_box">
+				<input type="password" id="pwd1" maxlength='20'>
+				<label for="pwd">注册密码</label>
+			</div>
+			<a class="login-b">登录<span></span><span></span><span></span><span></span></a>
+			<a class="enroll-b">注册<span></span><span></span><span></span><span></span></a>
+		</div>
+    </div>
+</template>
+<script>
+
+export default{
+    data(){
+        return {
+            showComponent: false
+        }
+    },
+}
+</script>
+<style>
+.login {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 400px;
+	padding: 40px;
+	background-color: rgba(0, 0, 0, 0.2);
+	box-shadow: 0 15px 25px rgba(0, 0, 0, 0.4);
+}
+ 
+.login h2 {
+	color: #fff;
+	margin-bottom: 30px;
+}
+ 
+.login .login_box {
+	position: relative;
+	width: 100%;
+}
+ 
+.login .login_box input {
+	outline: none;
+	border: none;
+	width: 100%;
+	padding: 10px 0;
+	margin-bottom: 30px;
+	color: #fff;
+	font-size: 16px;
+	border-bottom: 1px solid #fff;
+	background-color: transparent;
+}
+ 
+.login .login_box label {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding: 10px 0;
+	color: #fff;
+	pointer-events: none;
+	transition: all 0.5s;
+}
+ 
+.login .login_box input:focus+label,
+.login .login_box input:valid+label {
+	top: -20px;
+	color: #03e9f4;
+	font-size: 12px;
+}
+ 
+.login a {
+	position: relative;
+	padding: 10px 20px;
+	color: #03e9f4;
+	text-decoration: none;
+	transition: all 0.5s;
+}
+ 
+.login a:hover {
+	color: #fff;
+	border-radius: 5px;
+	background-color: #03e9f4;
+	box-shadow: 0 0 5px #03e9f4, 0 0 25px #03e9f4, 0 0 50px #03e9f4, 0 0 100px #03e9f4;
+}
+ 
+.login a span {
+	position: absolute;
+}
+ 
+.login a span:first-child {
+	top: 0;
+	left: -100%;
+	width: 100%;
+	height: 2px;
+	background: linear-gradient(to right, transparent, #03e9f4);
+	animation: move1 1s linear infinite;
+}
+ 
+.login a span:nth-child(2) {
+	right: 0;
+	top: -100%;
+	width: 2px;
+	height: 100%;
+	background: linear-gradient(transparent, #03e6f4);
+	animation: move2 1s linear 0.25s infinite;
+}
+ 
+.login a span:nth-child(3) {
+	right: -100%;
+	bottom: 0;
+	width: 100%;
+	height: 2px;
+	background: linear-gradient(to left, transparent, #03e9f4);
+	animation: move3 1s linear 0.5s infinite;
+}
+ 
+.login a span:last-child {
+	left: 0;
+	bottom: -100%;
+	width: 2px;
+	height: 100%;
+	background: linear-gradient(#03e9f4, transparent);
+	animation: move4 1s linear 0.75s infinite;
+}
+ 
+.login-a {
+	position: absolute;
+	left: 90px;
+	bottom: 0px;
+	cursor: pointer;
+}
+ 
+.enroll-a {
+	position: absolute;
+	left: -110px;
+	bottom: 40px;
+	cursor: pointer;
+}
+ 
+.login-b {
+	position: absolute;
+	left: -110px;
+	bottom: 0px;
+	cursor: pointer;
+}
+ 
+.enroll-b {
+	position: absolute;
+	left: 90px;
+	bottom: 40px;
+	cursor: pointer;
+}
+ 
+@keyframes move1 {
+	0% {
+		left: -100%;
+	}
+ 
+	50%,
+	100% {
+		left: 100%;
+	}
+}
+ 
+@keyframes move2 {
+	0% {
+		top: -100%;
+	}
+ 
+	50%,
+	100% {
+		top: 100%;
+	}
+}
+ 
+@keyframes move3 {
+	0% {
+		right: -100%;
+	}
+ 
+	50%,
+	100% {
+		right: 100%;
+	}
+}
+ 
+@keyframes move4 {
+	0% {
+		bottom: -100%;
+	}
+ 
+	50%,
+	100% {
+		bottom: 100%;
+	}
+}
+ 
+iframe {
+	width: 100%;
+	height: 100%;
+	border: 0px;
+	background-color: white;
+}
+</style>
+
+###
